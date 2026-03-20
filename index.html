@@ -2,8 +2,16 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Basreng POS — Login</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Basreng POS">
+<meta name="theme-color" content="#185fa5">
+<title>Basreng POS</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="stylesheet" href="css/style.css">
 <style>
 body{display:flex;align-items:center;justify-content:center;min-height:100vh}
@@ -139,6 +147,13 @@ async function doLogin() {
   }
 }
 setRole('admin');
+</script>
+<script>
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("/sw.js")
+    .then(()=>console.log("SW registered"))
+    .catch(e=>console.log("SW error:",e));
+}
 </script>
 </body>
 </html>

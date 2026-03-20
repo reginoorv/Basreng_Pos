@@ -5,7 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Basreng POS">
+<meta name="theme-color" content="#185fa5">
 <title>Basreng POS — Kasir</title>
+<link rel="manifest" href="../manifest.json">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="stylesheet" href="../css/style.css">
 <style>
 .struk-card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--rl);padding:14px;margin-bottom:12px}
@@ -165,7 +170,6 @@
 
 <div id="print-area" style="display:none"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/config.js"></script>
 <script src="../js/db.js"></script>
@@ -322,15 +326,25 @@ async function openScan(){
   document.getElementById('modal-scan').classList.add('show');
   document.getElementById('scan-al').classList.add('hidden');
   document.getElementById('scan-hint').textContent='Meminta izin kamera...';
+  // Pastikan jsQR sudah ada
   if(!window.jsQR){
-    document.getElementById('scan-al').textContent='Library scan belum siap, coba tutup dan buka lagi.';
-    document.getElementById('scan-al').classList.remove('hidden');
-    return;
+    await new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js';
+      s.onload=()=>{jsQRLoaded=true;res();};
+      s.onerror=()=>rej(new Error('Gagal load jsQR'));
+      document.head.appendChild(s);
+    }).catch(e=>{
+      document.getElementById('scan-al').textContent='Gagal memuat library scan: '+e.message;
+      document.getElementById('scan-al').classList.remove('hidden');
+      return;
+    });
   }
   try{
+    // Coba kamera belakang dulu, kalau gagal coba default
     let stream;
     try{
-      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}});
     }catch(e){
       stream=await navigator.mediaDevices.getUserMedia({video:true});
     }
@@ -343,10 +357,10 @@ async function openScan(){
       startScanLoop();
     };
   }catch(e){
-    let msg='Kamera tidak bisa diakses.';
-    if(e.name==='NotAllowedError') msg='Izin kamera ditolak. Buka Pengaturan → Safari → Kamera → Izinkan.';
-    else if(e.name==='NotFoundError') msg='Kamera tidak ditemukan.';
-    else msg='Error kamera: '+e.message;
+    let msg='Kamera tidak dapat diakses.';
+    if(e.name==='NotAllowedError') msg='Izin kamera ditolak. Buka pengaturan browser dan izinkan akses kamera.';
+    else if(e.name==='NotFoundError') msg='Kamera tidak ditemukan di perangkat ini.';
+    else msg='Error: '+e.message;
     document.getElementById('scan-al').textContent=msg;
     document.getElementById('scan-al').classList.remove('hidden');
     document.getElementById('scan-hint').textContent='Kamera tidak tersedia';
