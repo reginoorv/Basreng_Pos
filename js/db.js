@@ -186,6 +186,7 @@ async function generatePrintHTML(t) {
     <div style="display:flex;justify-content:space-between;font-size:11px;color:#666;padding-left:8px;margin-bottom:3px">
       <span>${i.qty} x ${fmtRp(i.harga)}</span><span>${fmtRp(i.subtotal)}</span>
     </div>`).join('');
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(t.kode)}`;
   return `<div style="font-family:monospace;width:72mm;padding:4mm 5mm;font-size:12px;line-height:1.55">
     <div style="text-align:center;margin-bottom:6px">
       <div style="font-size:15px;font-weight:700;letter-spacing:.04em">${s.toko_nama||'Basreng Store'}</div>
@@ -209,6 +210,11 @@ async function generatePrintHTML(t) {
     <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px"><span>TOTAL</span><span>${fmtRp(t.total)}</span></div>
     ${t.bayar?`<div style="display:flex;justify-content:space-between;font-size:12px"><span>Bayar</span><span>${fmtRp(t.bayar)}</span></div>
     <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700"><span>Kembali</span><span>${fmtRp(t.kembali||0)}</span></div>`:''}
+    <div style="border-top:1px solid #333;margin:6px 0"></div>
+    <div style="text-align:center;margin:6px 0">
+      <img src="${qrUrl}" width="80" height="80" style="display:block;margin:0 auto"/>
+      <div style="font-size:10px;color:#666;margin-top:3px">Scan untuk verifikasi struk</div>
+    </div>
     <div style="border-top:1px solid #333;margin:6px 0"></div>
     <div style="text-align:center;font-size:10px;color:#666">Terima kasih telah berbelanja!</div>
     <div style="text-align:center;font-size:10px;color:#666">Barang yang sudah dibeli tidak dapat dikembalikan.</div>
