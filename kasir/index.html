@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Basreng POS — Kasir</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+body{background:var(--bg)}
+.topbar{background:var(--surface);border-bottom:0.5px solid var(--border);padding:11px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.online-dot{width:8px;height:8px;border-radius:50%;background:var(--green-text);display:inline-block;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.layout{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:20px;max-width:940px;margin:0 auto}
+.kode-row{display:flex;gap:6px;margin-bottom:14px}
+.kode-input{flex:1;font-size:15px;font-weight:500;letter-spacing:.05em;padding:10px 14px}
+.struk-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px}
+.item-row{display:flex;align-items:center;padding:7px 0;border-bottom:0.5px solid var(--border);font-size:13px;gap:8px}
+.item-row:last-child{border-bottom:none}
+.konfirm-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px}
+.konfirm-total{text-align:center;padding:14px 0}
+.konfirm-total .lbl{font-size:12px;color:var(--text3);margin-bottom:4px}
+.konfirm-total .val{font-size:28px;font-weight:500}
+.bayar-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.bayar-row label{margin:0;white-space:nowrap;font-size:13px;color:var(--text2)}
+.kembalian-box{background:var(--teal-bg);border-radius:var(--radius);padding:12px;text-align:center;margin-bottom:12px}
+.kembalian-lbl{font-size:12px;color:var(--teal-text);margin-bottom:2px}
+.kembalian-val{font-size:22px;font-weight:500;color:var(--teal-text)}
+.state-wrap{text-align:center;padding:40px 20px}
+.suc-icon{width:56px;height:56px;border-radius:50%;background:var(--green-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.suc-icon svg{width:28px;height:28px;stroke:var(--green-text);fill:none;stroke-width:2.2;stroke-linecap:round}
+.riw-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:14px}
+.riw-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--border);font-size:13px}
+.riw-item:last-child{border-bottom:none}
+.notif-banner{background:var(--blue-bg);color:var(--blue-text);border-radius:var(--radius);padding:10px 14px;font-size:13px;font-weight:500;margin-bottom:12px;display:none;animation:slideIn .3s ease}
+@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+/* SCAN */
+.scan-container{position:relative;border-radius:var(--radius);overflow:hidden;background:#000;margin-bottom:10px}
+#scan-video{width:100%;display:block;max-height:260px;object-fit:cover}
+.scan-box{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:190px;height:190px;border:2px solid rgba(255,255,255,.8);border-radius:8px}
+.scan-line{position:absolute;left:10%;right:10%;height:2px;background:linear-gradient(90deg,transparent,#378add,transparent);animation:scanmove 2s ease-in-out infinite}
+@keyframes scanmove{0%,100%{top:10%}50%{top:88%}}
+.scan-hint{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:12px;color:rgba(255,255,255,.8)}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <div style="font-size:15px;font-weight:500">Basreng POS</div>
+    <span class="pill" style="background:var(--surface2);color:var(--text2);border:0.5px solid var(--border2)">Kasir</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span class="online-dot" id="realtime-dot" title="Realtime aktif"></span>
+    <span style="font-size:13px;color:var(--text2)" id="top-user">—</span>
+    <button class="btn btn-danger btn-sm" onclick="doLogout()">Keluar</button>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- KIRI -->
+  <div>
+    <div id="notif-banner" class="notif-banner">📋 Struk baru masuk! Klik Refresh atau ketik kodenya.</div>
+
+    <div class="kode-row">
+      <input type="text" class="kode-input" id="kode-input" placeholder="Kode struk..." autocomplete="off" onkeydown="if(event.key==='Enter')cariStruk()">
+      <button class="btn btn-primary" onclick="cariStruk()">Cari</button>
+      <button class="btn" onclick="openScan()" title="Scan QR">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><circle cx="17" cy="17" r="3"/></svg>
+        Scan
+      </button>
+    </div>
+
+    <div id="state-empty">
+      <div class="state-wrap">
+        <div style="font-size:36px;color:var(--text3);margin-bottom:8px">🧾</div>
+        <div style="font-size:14px;font-weight:500;color:var(--text2);margin-bottom:6px">Masukkan kode struk</div>
+        <div style="font-size:13px;color:var(--text3);line-height:1.6">Ketik kode dari admin atau klik Scan untuk kamera.<br>Contoh: <code style="background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:12px">BSR-260320-1234</code></div>
+      </div>
+    </div>
+
+    <div id="state-notfound" class="hidden">
+      <div class="state-wrap">
+        <div style="font-size:36px;color:var(--red-text);margin-bottom:8px">⚠️</div>
+        <div style="font-size:14px;font-weight:500;color:var(--red-text);margin-bottom:6px">Struk tidak ditemukan</div>
+        <div style="font-size:13px;color:var(--text3)" id="nf-sub">Periksa kembali kode struk.</div>
+      </div>
+    </div>
+
+    <div id="state-found" class="hidden">
+      <div class="struk-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:17px;font-weight:500;color:var(--blue-text)" id="sf-kode"></div>
+          <div id="sf-pills" style="display:flex;gap:6px"></div>
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px" id="sf-meta"></div>
+        <div id="sf-items"></div>
+        <hr>
+        <div id="sf-diskon-row" class="hidden" style="display:flex;justify-content:space-between;font-size:12px;color:var(--red-text);margin-bottom:4px"></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0">
+          <span style="font-size:14px;color:var(--text2)">Total</span>
+          <span style="font-size:20px;font-weight:500" id="sf-total"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="state-success" class="hidden">
+      <div class="state-wrap">
+        <div class="suc-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div style="font-size:16px;font-weight:500;margin-bottom:4px" id="suc-title">Berhasil!</div>
+        <div style="font-size:13px;color:var(--text3);margin-bottom:14px" id="suc-sub"></div>
+        <div id="suc-kembalian" class="kembalian-box hidden mb-12">
+          <div class="kembalian-lbl">Kembalian pembeli</div>
+          <div class="kembalian-val" id="suc-kembalian-val"></div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="prosesBerikutnya()">Struk berikutnya</button>
+          <button class="btn" onclick="cetakTerakhir()">Cetak struk</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KANAN -->
+  <div>
+    <div class="konfirm-card">
+      <div class="card-title">Konfirmasi pembayaran</div>
+      <div id="kf-empty" style="text-align:center;padding:20px;color:var(--text3);font-size:13px">Struk akan tampil setelah kode dimasukkan</div>
+      <div id="kf-ready" class="hidden">
+        <div class="konfirm-total">
+          <div class="lbl">Total yang harus dibayar</div>
+          <div class="val" id="kf-total"></div>
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:14px" id="kf-meta"></div>
+        <div class="bayar-row mb-8">
+          <label>Uang bayar (Rp)</label>
+          <input type="number" id="kf-bayar" min="0" placeholder="0" oninput="hitungKembali()">
+        </div>
+        <div class="kembalian-box hidden mb-12" id="kf-kembalian-box">
+          <div class="kembalian-lbl">Kembalian</div>
+          <div class="kembalian-val" id="kf-kembalian-val">Rp 0</div>
+        </div>
+        <div id="kf-al" class="alert alert-danger hidden mb-8"></div>
+        <button class="btn btn-success btn-full btn-lg mb-8" id="btn-lunas" onclick="prosesLunas()">Tandai Lunas</button>
+        <button class="btn btn-danger btn-full" onclick="prosesBatal()">Batalkan struk</button>
+      </div>
+      <div id="kf-done" class="hidden" style="text-align:center;padding:14px;color:var(--text3);font-size:13px">Struk sudah diproses</div>
+    </div>
+
+    <div class="riw-card">
+      <div style="font-size:13px;font-weight:500;color:var(--text2);margin-bottom:10px;padding-bottom:8px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between">
+        <span>Riwayat hari ini</span>
+        <span id="riw-count" style="color:var(--text3);font-weight:400;font-size:12px"></span>
+      </div>
+      <div id="riw-list"><div style="text-align:center;padding:14px;color:var(--text3);font-size:13px">Belum ada transaksi hari ini</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SCAN -->
+<div class="modal-bg" id="modal-scan">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title">Scan QR Code Struk</div>
+    <div class="scan-container">
+      <video id="scan-video" playsinline autoplay muted></video>
+      <div style="position:absolute;inset:0;pointer-events:none">
+        <div class="scan-box"><div class="scan-line"></div></div>
+        <div class="scan-hint" id="scan-hint">Arahkan ke QR code pada struk</div>
+      </div>
+    </div>
+    <canvas id="scan-canvas" style="display:none"></canvas>
+    <div id="scan-al" class="alert alert-danger hidden mt-8"></div>
+    <div class="modal-footer"><button class="btn" onclick="closeScan()">Tutup</button></div>
+  </div>
+</div>
+
+<div id="print-area" style="display:none"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/config.js"></script>
+<script src="../js/db.js"></script>
+<script>
+let session=null, currentStruk=null, lastStruk=null, scanStream=null, scanTimer=null, realtimeChannel=null;
+
+window.onload = async () => {
+  session = requireAuth('kasir');
+  if (!session) return;
+  document.getElementById('top-user').textContent = session.nama;
+  await loadRiwayat();
+  setupRealtime();
+  document.getElementById('kode-input').focus();
+};
+function doLogout(){
+  if(realtimeChannel) sb.removeChannel(realtimeChannel);
+  clearSession(); location.href='../index.html';
+}
+
+// REALTIME — dengarkan transaksi baru dari admin
+function setupRealtime() {
+  realtimeChannel = sb.channel('kasir-realtime')
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'transaksi' }, payload => {
+      const banner = document.getElementById('notif-banner');
+      banner.innerHTML = `📋 Struk baru: <strong>${payload.new.kode}</strong> — ${payload.new.nama_pembeli||''} (${fmtRp(payload.new.total)})`;
+      banner.style.display = 'block';
+      setTimeout(() => { banner.style.display='none'; }, 8000);
+      loadRiwayat();
+      showToast('Struk baru masuk: '+payload.new.kode, 'success');
+    })
+    .on('postgres_changes', { event:'UPDATE', schema:'public', table:'transaksi' }, () => {
+      loadRiwayat();
+    })
+    .subscribe(status => {
+      const dot = document.getElementById('realtime-dot');
+      dot.style.background = status==='SUBSCRIBED' ? 'var(--green-text)' : 'var(--amber-text)';
+    });
+}
+
+async function cariStruk() {
+  const kode = document.getElementById('kode-input').value.trim().toUpperCase();
+  if (!kode) { showToast('Masukkan kode struk','error'); return; }
+  hideAllStates();
+  try {
+    const t = await dbGetByField('transaksi','kode',kode);
+    if (!t) { document.getElementById('nf-sub').textContent=`Kode "${kode}" tidak ditemukan.`; document.getElementById('state-notfound').classList.remove('hidden'); resetKonfirm(); return; }
+    if (t.status==='batal') { document.getElementById('nf-sub').textContent=`Struk ${kode} sudah dibatalkan.`; document.getElementById('state-notfound').classList.remove('hidden'); resetKonfirm(); return; }
+    currentStruk=t;
+    // Render detail
+    document.getElementById('sf-kode').textContent=t.kode;
+    document.getElementById('sf-pills').innerHTML=tipePill(t.tipe)+' '+statusPill(t.status);
+    document.getElementById('sf-meta').textContent=`Pembeli: ${t.nama_pembeli||'-'} · Admin: ${t.created_by||'-'} · ${fmtDateShort(t.created_at)}`;
+    document.getElementById('sf-items').innerHTML=t.items.map(i=>`<div class="item-row"><span style="flex:1">${i.nama}</span><span style="color:var(--text3);font-size:12px">x${i.qty}</span><span style="font-weight:500">${fmtRp(i.subtotal)}</span></div>`).join('');
+    const dr=document.getElementById('sf-diskon-row');if(t.diskon>0){dr.classList.remove('hidden');dr.innerHTML=`<span>Diskon</span><span>- ${fmtRp(t.diskon)}</span>`;}else dr.classList.add('hidden');
+    document.getElementById('sf-total').textContent=fmtRp(t.total);
+    document.getElementById('state-found').classList.remove('hidden');
+    // Konfirm
+    document.getElementById('kf-empty').classList.add('hidden');
+    document.getElementById('kf-done').classList.add('hidden');
+    document.getElementById('kf-al').classList.add('hidden');
+    if (t.status==='pending') {
+      document.getElementById('kf-total').textContent=fmtRp(t.total);
+      document.getElementById('kf-meta').textContent=`Tipe: ${{agen:'Agen',ecer:'Ecer',mix:'Agen+Ecer'}[t.tipe]} · Admin: ${t.created_by||'-'}`;
+      document.getElementById('kf-bayar').value='';
+      document.getElementById('kf-kembalian-box').classList.add('hidden');
+      document.getElementById('kf-ready').classList.remove('hidden');
+      document.getElementById('btn-lunas').disabled=false;
+      document.getElementById('btn-lunas').textContent='Tandai Lunas';
+    } else {
+      document.getElementById('kf-done').classList.remove('hidden');
+      showToast('Struk ini sudah diproses sebelumnya.','warning');
+    }
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+
+function hitungKembali(){
+  const total=currentStruk?.total||0;const bayar=parseInt(document.getElementById('kf-bayar').value)||0;
+  const box=document.getElementById('kf-kembalian-box');const val=document.getElementById('kf-kembalian-val');const al=document.getElementById('kf-al');
+  if(bayar<=0){box.classList.add('hidden');return;}
+  box.classList.remove('hidden');const kembali=bayar-total;
+  if(kembali<0){val.textContent=`Kurang ${fmtRp(Math.abs(kembali))}`;val.style.color='var(--red-text)';box.style.background='var(--red-bg)';al.textContent='Uang bayar kurang!';al.classList.remove('hidden');}
+  else{val.textContent=fmtRp(kembali);val.style.color='var(--teal-text)';box.style.background='var(--teal-bg)';al.classList.add('hidden');}
+}
+
+async function prosesLunas(){
+  if(!currentStruk)return;
+  const bayar=parseInt(document.getElementById('kf-bayar').value)||0;
+  const kembali=bayar>0?bayar-currentStruk.total:0;
+  if(bayar>0&&bayar<currentStruk.total){const al=document.getElementById('kf-al');al.textContent='Uang bayar kurang!';al.classList.remove('hidden');return;}
+  const btn=document.getElementById('btn-lunas');btn.disabled=true;btn.textContent='Memproses...';
+  try{
+    const updated={status:'lunas',processed_by:session.nama,bayar:bayar||currentStruk.total,kembali:Math.max(0,kembali),updated_at:new Date().toISOString()};
+    const result=await dbUpdate('transaksi',currentStruk.id,updated);
+    lastStruk={...currentStruk,...updated,...result};
+    hideAllStates();
+    document.getElementById('state-success').classList.remove('hidden');
+    document.getElementById('suc-title').textContent='Pembayaran berhasil!';
+    document.getElementById('suc-sub').textContent=`Struk ${currentStruk.kode} — ${fmtRp(currentStruk.total)}`;
+    if(kembali>0){document.getElementById('suc-kembalian').classList.remove('hidden');document.getElementById('suc-kembalian-val').textContent=fmtRp(kembali);}
+    else document.getElementById('suc-kembalian').classList.add('hidden');
+    document.getElementById('kf-ready').classList.add('hidden');document.getElementById('kf-done').classList.remove('hidden');
+    await loadRiwayat();showToast('Struk '+currentStruk.kode+' lunas!','success');
+  }catch(e){showToast('Gagal: '+e.message,'error');btn.disabled=false;btn.textContent='Tandai Lunas';}
+}
+
+async function prosesBatal(){
+  if(!currentStruk)return;
+  if(!confirm(`Batalkan struk ${currentStruk.kode}?\nStok akan dikembalikan.`))return;
+  await dbUpdate('transaksi',currentStruk.id,{status:'batal',updated_at:new Date().toISOString()});
+  await kembalikanStok(currentStruk.items,currentStruk.kode,session.nama);
+  prosesBerikutnya();await loadRiwayat();showToast('Struk dibatalkan. Stok dikembalikan.','warning');
+}
+
+function prosesBerikutnya(){currentStruk=null;document.getElementById('kode-input').value='';hideAllStates();document.getElementById('state-empty').classList.remove('hidden');resetKonfirm();document.getElementById('kode-input').focus();}
+function hideAllStates(){['state-empty','state-notfound','state-found','state-success'].forEach(id=>document.getElementById(id).classList.add('hidden'));}
+function resetKonfirm(){document.getElementById('kf-ready').classList.add('hidden');document.getElementById('kf-done').classList.add('hidden');document.getElementById('kf-empty').classList.remove('hidden');}
+
+async function cetakTerakhir(){if(!lastStruk)return;const pa=document.getElementById('print-area');pa.innerHTML=await generatePrintHTML(lastStruk);pa.style.display='block';window.print();pa.style.display='none';}
+
+async function loadRiwayat(){
+  const all=await dbGetAll('transaksi',{order:'created_at'});
+  const today=new Date().toISOString().slice(0,10);
+  const mine=all.filter(t=>t.created_at.slice(0,10)===today).sort((a,b)=>new Date(b.updated_at||b.created_at)-new Date(a.updated_at||a.created_at)).slice(0,15);
+  document.getElementById('riw-count').textContent=`(${mine.length})`;
+  const list=document.getElementById('riw-list');
+  if(!mine.length){list.innerHTML='<div style="text-align:center;padding:14px;color:var(--text3);font-size:13px">Belum ada transaksi hari ini</div>';return;}
+  list.innerHTML=mine.map(t=>`<div class="riw-item"><span style="color:var(--blue-text);font-weight:500;min-width:110px;font-size:12px">${t.kode}</span><span style="flex:1;color:var(--text2);font-size:12px">${t.nama_pembeli||'-'} · ${tipePill(t.tipe)}</span><span style="font-weight:500">${fmtRp(t.total)}</span>${statusPill(t.status)}</div>`).join('');
+}
+
+// QR SCANNER
+async function openScan(){
+  document.getElementById('modal-scan').classList.add('show');
+  document.getElementById('scan-al').classList.add('hidden');
+  document.getElementById('scan-hint').textContent='Memulai kamera...';
+  try{
+    scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const v=document.getElementById('scan-video');v.srcObject=scanStream;await v.play();
+    document.getElementById('scan-hint').textContent='Arahkan ke QR code pada struk';
+    if(!window.jsQR){const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js';s.onload=()=>scanLoop();document.head.appendChild(s);}else scanLoop();
+  }catch(e){document.getElementById('scan-al').textContent='Kamera tidak bisa diakses: '+e.message;document.getElementById('scan-al').classList.remove('hidden');}
+}
+function scanLoop(){
+  const v=document.getElementById('scan-video'),c=document.getElementById('scan-canvas'),ctx=c.getContext('2d');
+  if(!scanStream)return;
+  if(v.readyState===v.HAVE_ENOUGH_DATA){c.width=v.videoWidth;c.height=v.videoHeight;ctx.drawImage(v,0,0);if(window.jsQR){const code=jsQR(ctx.getImageData(0,0,c.width,c.height).data,c.width,c.height,{inversionAttempts:'dontInvert'});if(code&&code.data){const val=code.data.trim().toUpperCase();if(val.startsWith('BSR-')){closeScan();document.getElementById('kode-input').value=val;cariStruk();showToast('QR discan: '+val,'success');return;}}}}
+  scanTimer=requestAnimationFrame(scanLoop);
+}
+function closeScan(){document.getElementById('modal-scan').classList.remove('show');if(scanTimer){cancelAnimationFrame(scanTimer);scanTimer=null;}if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null;}}
+</script>
+</body>
+</html>

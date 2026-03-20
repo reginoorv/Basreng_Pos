@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Basreng POS — Login</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+body{display:flex;align-items:center;justify-content:center;min-height:100vh}
+.wrap{width:100%;max-width:360px;padding:16px}
+.card{padding:28px}
+.brand{text-align:center;margin-bottom:22px}
+.logo-box{width:52px;height:52px;border-radius:12px;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
+.logo-box svg{width:28px;height:28px;stroke:var(--blue);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.brand h1{font-size:20px;margin-bottom:3px}
+.brand p{font-size:13px;color:var(--text3)}
+.role-row{display:flex;background:var(--surface2);border-radius:var(--radius);padding:3px;gap:3px;margin-bottom:18px}
+.role-btn{flex:1;padding:7px;border:none;border-radius:6px;font-size:13px;cursor:pointer;background:transparent;color:var(--text2);transition:all .15s}
+.role-btn.active{background:var(--surface);color:var(--text);font-weight:500;border:0.5px solid var(--border2)}
+.pass-wrap{position:relative}
+.pass-wrap input{padding-right:38px}
+.eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;width:auto;line-height:0}
+.hint{background:var(--surface2);border-radius:var(--radius);padding:10px 12px;margin-top:14px}
+.hint-title{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.hint-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px}
+.hint-key{color:var(--text3)}
+.hint-val{font-family:monospace;font-weight:500}
+.conn-status{text-align:center;font-size:12px;margin-top:14px;padding:6px 10px;border-radius:var(--radius);background:var(--surface2);color:var(--text3)}
+.conn-status.ok{background:var(--green-bg);color:var(--green-text)}
+.conn-status.err{background:var(--red-bg);color:var(--red-text)}
+.ver{text-align:center;font-size:11px;color:var(--text3);margin-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="brand">
+      <div class="logo-box">
+        <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+      </div>
+      <h1>Basreng POS</h1>
+      <p id="brand-sub">Sistem Kasir Online</p>
+    </div>
+
+    <div class="role-row">
+      <button class="role-btn active" onclick="setRole('admin')" id="btn-admin">Admin</button>
+      <button class="role-btn" onclick="setRole('kasir')" id="btn-kasir">Kasir</button>
+    </div>
+
+    <div id="al" class="alert alert-danger hidden mb-12"></div>
+
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="u" placeholder="Masukkan username" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <div class="pass-wrap">
+        <input type="password" id="p" placeholder="Masukkan password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+        <button class="eye" onclick="toggleEye()" tabindex="-1">
+          <svg id="eye-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-full btn-lg mt-8" id="btn-login" onclick="doLogin()">Masuk</button>
+
+    <div class="hint">
+      <div class="hint-title">Akun bawaan</div>
+      <div id="hint-body">
+        <div class="hint-row"><span class="hint-key">Username</span><span class="hint-val" id="h-user">admin</span></div>
+        <div class="hint-row"><span class="hint-key">Password</span><span class="hint-val" id="h-pass">admin123</span></div>
+      </div>
+    </div>
+
+    <div class="conn-status" id="conn-status">Memeriksa koneksi...</div>
+  </div>
+  <div class="ver">Basreng POS Online v1.0 &nbsp;·&nbsp; Powered by Supabase</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/db.js"></script>
+<script>
+let role = 'admin';
+const creds = {admin:['admin','admin123'], kasir:['kasir1','kasir123']};
+
+// Cek koneksi Supabase
+async function cekKoneksi() {
+  try {
+    const { error } = await sb.from('settings').select('key').limit(1);
+    if (error) throw error;
+    document.getElementById('conn-status').textContent = '🟢 Terhubung ke database';
+    document.getElementById('conn-status').className = 'conn-status ok';
+  } catch(e) {
+    document.getElementById('conn-status').textContent = '🔴 Gagal terhubung — periksa config.js';
+    document.getElementById('conn-status').className = 'conn-status err';
+  }
+}
+cekKoneksi();
+
+function setRole(r) {
+  role = r;
+  document.getElementById('btn-admin').classList.toggle('active', r==='admin');
+  document.getElementById('btn-kasir').classList.toggle('active', r==='kasir');
+  document.getElementById('brand-sub').textContent = r==='admin'?'Masuk sebagai Admin':'Masuk sebagai Kasir';
+  document.getElementById('h-user').textContent = creds[r][0];
+  document.getElementById('h-pass').textContent = creds[r][1];
+  document.getElementById('al').classList.add('hidden');
+}
+function toggleEye() {
+  const i = document.getElementById('p');
+  const show = i.type==='text';
+  i.type = show?'password':'text';
+  document.getElementById('eye-ico').innerHTML = show
+    ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
+    : '<path d="M17.94 17.94A10 10 0 0112 20c-7 0-11-8-11-8a18 18 0 015.06-5.94M9.9 4.24A9 9 0 0112 4c7 0 11 8 11 8a18 18 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+}
+async function doLogin() {
+  const btn = document.getElementById('btn-login');
+  const al = document.getElementById('al');
+  const u = document.getElementById('u').value.trim();
+  const pw = document.getElementById('p').value;
+  if (!u||!pw) { al.textContent='Username dan password wajib diisi.'; al.classList.remove('hidden'); return; }
+  btn.disabled=true; btn.textContent='Memverifikasi...';
+  try {
+    const user = await login(u, pw);
+    if (user.role !== role) {
+      al.textContent = `Akun ini adalah ${user.role==='admin'?'Admin':'Kasir'}. Pilih level yang sesuai.`;
+      al.classList.remove('hidden');
+      btn.disabled=false; btn.textContent='Masuk'; return;
+    }
+    location.href = user.role==='admin' ? 'admin/index.html' : 'kasir/index.html';
+  } catch(e) {
+    al.textContent = e.message; al.classList.remove('hidden');
+    btn.disabled=false; btn.textContent='Masuk';
+  }
+}
+setRole('admin');
+</script>
+</body>
+</html>
